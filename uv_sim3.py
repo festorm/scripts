@@ -43,35 +43,38 @@ def readfile(f):
         #l = l[:25]
     return tom,l,f
     
-def plot(x,y,ax,fig,i=0,lambda_start=250, lambda_end=750,ymax_old = 1000):
+def plot(x,y,ax,fig,box=[0.85,0.85],i=0,lambda_start=250, lambda_end=750,ymax_old = 1000):
     
-    print (files[i].split('_uv_data.txt',1)[0])
-    lab = input('Enter legend: ') or files[i].split('_uv_data.txt',1)[0]
-    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-    plt.plot(t,uv,color = tableau20[i],lw=1.5)
+    print (files[i].split('_',3)[2])
+    lab = input('Enter legend: ') or files[i].split('_',3)[2]
+    ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
     #write the maximum absorption
-    for n in range(len(uv)):
-        if uv[-(n+1)] > uv[-(n+2)]:
+    for n in range(len(y)):
+        if y[-(n+1)] > y[-(n+2)]:
             txt = str(int(t[-(n+1)]))
             print ('adding text')
-            plt.annotate(txt,(t[-(n+1)]-10,uv[-(n+1)]+400))
+   #         plt.annotate(txt,(t[-(n+1)]-10,uv[-(n+1)]+400))
             break        
-    fig.text(0.7,0.85-(float(i)/30.0),lab, fontsize=10, color = tableau20[i])
-    ymax = max(uv)+2000
-
+    ax.plot(x,y,color = tableau20[i],lw=1.5, label = lab +' '+ txt)
+    #plt.legend()
+    
+    fig.text(box[0],box[1]-(float(i%5)/30.0),lab, fontsize=10, color = tableau20[i])
+    ymax = max(y)+2000
+    print (ymax_old, ymax)
     if ymax < ymax_old:
         ymax = ymax_old
     ymax_old = ymax
+    print (ymax_old)
     
-    plt.xlim([lambda_start,lambda_end])
-    plt.ylim([0,ymax])
+    ax.set_xlim([lambda_start,lambda_end])
+    ax.set_ylim([0,ymax])
     #plt.grid(color='black', which='major', axis='y', linestyle='--', alpha = 0.3)
     #ax.get_xaxis().set_tick_params(direction='out', width=1)
     #ax.get_yaxis().set_tick_params(direction='out', width=1)
     
-    majorLocator = MultipleLocator(50)
+    majorLocator = MultipleLocator(100)
     majorFormatter = FormatStrFormatter('%d')
-    minorLocator = MultipleLocator(25)
+    minorLocator = MultipleLocator(50)
         
     ax.xaxis.set_major_locator(majorLocator)
     ax.xaxis.set_major_formatter(majorFormatter)
@@ -95,6 +98,7 @@ name = input('Enter filename: ') or "test"
 #create list of relevant file names
 files = [filename for filename in os.listdir('.') if filename.endswith('.txt')]
 files.sort()
+print (files)
 
 # These are the "Tableau 20" colors as RGB.
 tableau20 = [(255, 0, 224), (88, 0, 99), (88, 0, 255), (210, 70, 43),    
@@ -110,7 +114,7 @@ for i in range(len(tableau20)):
 
 
 
-fig = plt.figure()
+
 #number of points on x-axis
 N=500
 lambda_start = 250
@@ -118,50 +122,68 @@ lambda_end = 750
 t=np.linspace(lambda_start, lambda_end, N, endpoint=True)
 #y-axis parameters
 
+
 ymax_old = 1000
 
-print (len(files))
+#fig,(ax1,ax2) = plt.subplots(2,sharey=True, sharex = True)
+
+
+
 for i in range(len(files)):
     if len(files) <= 5 :
-        ax = plt.subplot(111)
+        
+        #ax = plt.subplot(111)
         h,l,f = readfile(files[i])
         uv = uvvis(t,l,f)
-        ymax_old = plot(t,uv,ax,fig,i,lambda_start,lambda_end,ymax_old)
+        fig, ax1 = plt.subplots()
+        ymax_old = plot(t,uv,ax1,fig,box=[0.85,0.85],i=i)
         
     elif len(files) <= 10 :
-        if i <= 3:
+        if i <= 4:
+            if (i)%11==0:
+                fig,(ax1,ax2) = plt.subplots(2,sharey=True, sharex = True)
             h,l,f = readfile(files[i])
             uv = uvvis(t,l,f)
-            ax =  plt.subplot(211)
-            ymax_old = plot(t,uv,ax,fig,i,lambda_start,lambda_end)
+            #ax =  plt.subplot(211)
+            print ('plot')
+            ymax_old = plot(t,uv,ax1,fig,i=i,lambda_start=lambda_start,box = [0.4,0.85],lambda_end=lambda_end,ymax_old=ymax_old)
             
         else :
             h,l,f = readfile(files[i])
             uv = uvvis(t,l,f)
-            ax = plt.subplot(212)
-            ymax_old = plot(t,uv,ax,fig,i,lambda_start,lambda_end)
+            #ax = plt.subplot(212)
+            print ('plot')
+            ymax_old = plot(t,uv,ax2,fig,i=i,lambda_start=lambda_start,lambda_end=lambda_end,ymax_old=ymax_old)
+    
+    
+    
+    
+    
     
     elif len(files) <= 25 :
-        if i <= 4:                   
+       
+        if i <= 4:  
+            if i % 11 ==0:
+                 fig,((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,sharey=True, sharex = True)
             h,l,f = readfile(files[i])
             uv = uvvis(t,l,f)
-            ax = plt.subplot(221)
-            ymax_old = plot(t,uv,ax,fig,i,lambda_start,lambda_end)
+            #ax = plt.subplot(221)
+            ymax_old = plot(t,uv,ax1,fig,[0.4,0.85],i,lambda_start,lambda_end,ymax_old)
         elif i <= 9 :
             h,l,f = readfile(files[i])
             uv = uvvis(t,l,f)
-            ax =  plt.subplot(222)
-            ymax_old = plot(t,uv,ax,fig,i,lambda_start,lambda_end)
+            #ax =  plt.subplot(222)
+            ymax_old = plot(t,uv,ax2,fig,i=i,lambda_start=lambda_start,lambda_end=lambda_end,ymax_old=ymax_old)
         elif i <= 14 :
             h,l,f = readfile(files[i])
             uv = uvvis(t,l,f)
-            ax = plt.subplot(223)
-            ymax_old = plot(t,uv,ax,fig,i,lambda_start,lambda_end)
-        else :
+            #ax = plt.subplot(223)
+            ymax_old = plot(t,uv,ax3,fig,[0.4,0.45],i,lambda_start,lambda_end,ymax_old)
+        elif i <= len(files)-1:
             h,l,f = readfile(files[i])
             uv = uvvis(t,l,f)
-            ax = plt.subplot(224)
-            ymax_old = plot(t,uv,ax,fig,i,lambda_start,lambda_end)
+            #ax = plt.subplot(224)
+            ymax_old = plot(t,uv,ax4,fig,[0.85,0.45],i,lambda_start,lambda_end,ymax_old)
 
 
 #Add labels collectively for subplots
@@ -169,11 +191,12 @@ plt.margins(0.2)
 plt.subplots_adjust(bottom=0.15,hspace=0.5)
 fig.text(0.5,0.95,title, fontsize=20, ha='center', va='center')
 fig.text(0.5, 0.06, 'Wavelength (nm)', fontsize=15, ha='center', va='center')
-fig.text(0.02, 0.5, r'$\varepsilon$ (L/(mol cm))', fontsize=15, ha='center', va='center', rotation='vertical')
+fig.text(0.05, 0.5, r'$\varepsilon$ L mol$^{-1}$ cm$^{-1}$', fontsize=15, ha='center', va='center', rotation='vertical')
 
 
 plt.savefig(name + '.png')
 
+"""
 # Add the oscillator strength bars
 ax2 = ax.twinx()
 ax2.spines["top"].set_visible(False)
@@ -188,7 +211,6 @@ for i in range(len(files)):
     plt.ylim(0,1)
 plt.savefig(name + '2.png')
 
-"""
 plt.clf()
 
 ax = plt.subplot(111)
