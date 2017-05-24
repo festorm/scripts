@@ -54,9 +54,9 @@ def plot(x,y,ax,fig,i=0,lambda_start=250, lambda_end=750,ymax_old = 1000):
         if uv[-(n+1)] > uv[-(n+2)]:
             txt = str(int(t[-(n+1)]))
             print 'adding text'
-            plt.annotate(txt,(t[-(n+1)]-10,uv[-(n+1)]+400))
+            #plt.annotate(txt,(t[-(n+1)]-10,uv[-(n+1)]+400))
             break        
-    fig.text(0.7,0.85-(float(i)/30.0),lab, fontsize=10, color = tableau20[i])
+    fig.text(0.7,0.85-(float(i)/30.0),lab+r'$\lambda_{max}$ '+txt, fontsize=10, color = tableau20[i])
     ymax = max(uv)+2000
 
     if ymax < ymax_old:
@@ -95,7 +95,7 @@ name = raw_input('Enter filename: ') or "test"
 #create list of relevant file names
 files = [filename for filename in os.listdir('.') if filename.endswith('.txt')]
 files.sort()
-
+print files
 # These are the "Tableau 20" colors as RGB.
 tableau20 = [(255, 0, 224), (88, 0, 99), (88, 0, 255), (210, 70, 43),    
              (76, 143, 0), (152, 223, 138), (214, 39, 40), (255, 152, 150),    
@@ -122,14 +122,14 @@ ymax_old = 1000
 
 print len(files)
 for i in range(len(files)):
-    if len(files) <= 5 :
+    if len(files) <= 3 :
         ax = plt.subplot(111)
         h,l,f = readfile(files[i])
         uv = uvvis(t,l,f)
         ymax_old = plot(t,uv,ax,fig,i,lambda_start,lambda_end,ymax_old)
         
     elif len(files) <= 10 :
-        if i <= 3:
+        if i <= 2:
             h,l,f = readfile(files[i])
             uv = uvvis(t,l,f)
             ax =  plt.subplot(211)

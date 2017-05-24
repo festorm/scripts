@@ -45,8 +45,8 @@ def readfile(f):
     
 def plot(x,y,ax,fig,box=[0.85,0.85],i=0,lambda_start=250, lambda_end=750,ymax_old = 1000):
     
-    print (files[i].split('_',3)[2])
-    lab = input('Enter legend: ') or files[i].split('_',3)[2]
+    print (files[i].split('_',2)[1])
+    lab = input('Enter legend: ') or files[i].split('_',2)[1]
     ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
     #write the maximum absorption
     for n in range(len(y)):
@@ -58,7 +58,7 @@ def plot(x,y,ax,fig,box=[0.85,0.85],i=0,lambda_start=250, lambda_end=750,ymax_ol
     ax.plot(x,y,color = tableau20[i],lw=1.5, label = lab +' '+ txt)
     #plt.legend()
     
-    fig.text(box[0],box[1]-(float(i%5)/30.0),lab, fontsize=10, color = tableau20[i])
+    fig.text(box[0],box[1]-(float(i%5)/30.0),lab + r'$\lambda_{max} $ ' + txt, fontsize=10, color = tableau20[i])
     ymax = max(y)+2000
     print (ymax_old, ymax)
     if ymax < ymax_old:
@@ -72,9 +72,9 @@ def plot(x,y,ax,fig,box=[0.85,0.85],i=0,lambda_start=250, lambda_end=750,ymax_ol
     #ax.get_xaxis().set_tick_params(direction='out', width=1)
     #ax.get_yaxis().set_tick_params(direction='out', width=1)
     
-    majorLocator = MultipleLocator(100)
+    majorLocator = MultipleLocator(50)
     majorFormatter = FormatStrFormatter('%d')
-    minorLocator = MultipleLocator(50)
+    minorLocator = MultipleLocator(25)
         
     ax.xaxis.set_major_locator(majorLocator)
     ax.xaxis.set_major_formatter(majorFormatter)
@@ -86,13 +86,22 @@ def plot(x,y,ax,fig,box=[0.85,0.85],i=0,lambda_start=250, lambda_end=750,ymax_ol
     ax.yaxis.set_ticks_position('left')
     ax.xaxis.set_ticks_position('bottom')
     return ymax_old
-    
-    
+
+def oscillator_plot(ax,l,f,i,lambda_start,lambda_end):
+    ax2 = ax.twinx()
+    ax2.spines["top"].set_visible(False)
+    #ax2.spines["right"].set_visible(False)
+    ax2.spines["bottom"].set_visible(False)
+    ax2.spines["left"].set_visible(False)
+    ax2.bar(l,f,2,color = tableau20[i])
+    plt.xlim([lambda_start,lambda_end])
+    plt.ylim(0,1)
+
 
 
 
 #user input for plot
-title = input('Enter plot title: ') or "title"
+#title = input('Enter plot title: ') or "title"
 name = input('Enter filename: ') or "test"    
 
 #create list of relevant file names
@@ -101,11 +110,12 @@ files.sort()
 print (files)
 
 # These are the "Tableau 20" colors as RGB.
-tableau20 = [(255, 0, 224), (88, 0, 99), (88, 0, 255), (210, 70, 43),    
+tableau20 = [(255, 0, 224), (219, 219, 141), (127, 127, 127), (158, 218, 229), 
+             (88, 0, 99), (88, 0, 255), (210, 70, 43),    
              (76, 143, 0), (152, 223, 138), (214, 39, 40), (255, 152, 150),    
              (148, 103, 189), (197, 176, 213), (140, 86, 75), (196, 156, 148),    
-             (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),    
-             (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229), (158, 200, 229)] 
+             (227, 119, 194), (247, 182, 210), (199, 199, 199),    
+             (188, 189, 34),  (23, 190, 207), (158, 200, 229)] 
     
 # Scale the RGB values to the [0, 1] range, which is the format matplotlib accepts.    
 for i in range(len(tableau20)):    
@@ -118,7 +128,7 @@ for i in range(len(tableau20)):
 #number of points on x-axis
 N=500
 lambda_start = 250
-lambda_end = 750
+lambda_end = 600
 t=np.linspace(lambda_start, lambda_end, N, endpoint=True)
 #y-axis parameters
 
@@ -130,36 +140,33 @@ ymax_old = 1000
 
 
 for i in range(len(files)):
-    if len(files) <= 5 :
-        
+    if len(files) <= 5:
+        if i%11==0:
+            fig,ax1 = plt.subplots()
         #ax = plt.subplot(111)
         h,l,f = readfile(files[i])
         uv = uvvis(t,l,f)
-        fig, ax1 = plt.subplots()
-        ymax_old = plot(t,uv,ax1,fig,box=[0.85,0.85],i=i)
+        ymax_old = plot(t,uv,ax1,fig,box=[0.5,0.85],i=i,lambda_start=lambda_start, lambda_end=lambda_end,ymax_old=ymax_old)
+        
         
     elif len(files) <= 10 :
-        if i <= 4:
+        if i <= 2:
             if (i)%11==0:
                 fig,(ax1,ax2) = plt.subplots(2,sharey=True, sharex = True)
             h,l,f = readfile(files[i])
             uv = uvvis(t,l,f)
             #ax =  plt.subplot(211)
             print ('plot')
-            ymax_old = plot(t,uv,ax1,fig,i=i,lambda_start=lambda_start,box = [0.4,0.85],lambda_end=lambda_end,ymax_old=ymax_old)
+            ymax_old = plot(t,uv,ax1,fig,i=i,lambda_start=lambda_start,box = [0.7,0.85],lambda_end=lambda_end,ymax_old=ymax_old)
             
         else :
             h,l,f = readfile(files[i])
             uv = uvvis(t,l,f)
             #ax = plt.subplot(212)
             print ('plot')
-            ymax_old = plot(t,uv,ax2,fig,i=i,lambda_start=lambda_start,lambda_end=lambda_end,ymax_old=ymax_old)
+            ymax_old = plot(t,uv,ax2,fig,i=i,lambda_start=lambda_start,lambda_end=lambda_end,box = [0.7,0.45],ymax_old=ymax_old)
     
-    
-    
-    
-    
-    
+       
     elif len(files) <= 25 :
        
         if i <= 4:  
@@ -189,12 +196,46 @@ for i in range(len(files)):
 #Add labels collectively for subplots
 plt.margins(0.2)
 plt.subplots_adjust(bottom=0.15,hspace=0.5)
-fig.text(0.5,0.95,title, fontsize=20, ha='center', va='center')
+#fig.text(0.5,0.95,title, fontsize=20, ha='center', va='center')
 fig.text(0.5, 0.06, 'Wavelength (nm)', fontsize=15, ha='center', va='center')
 fig.text(0.05, 0.5, r'$\varepsilon$ L mol$^{-1}$ cm$^{-1}$', fontsize=15, ha='center', va='center', rotation='vertical')
 
 
 plt.savefig(name + '.png')
+
+
+for i in range(len(files)):
+    if len(files) <= 5:
+        h,l,f = readfile(files[i])
+        oscillator_plot(ax1,l,f,i,lambda_start,lambda_end)
+        
+    elif len(files) <= 10 :
+        if i <= 2:
+            h,l,f = readfile(files[i])
+            oscillator_plot(ax1,l,f,i,lambda_start,lambda_end)
+        else :
+            h,l,f = readfile(files[i])
+            oscillator_plot(ax2,l,f,i,lambda_start,lambda_end)
+    
+    elif len(files) <= 25 :
+       
+        if i <= 4:  
+            h,l,f = readfile(files[i])
+            oscillator_plot(ax1,l,f,i,lambda_start,lambda_end)
+        elif i <= 9 :
+            h,l,f = readfile(files[i])
+            oscillator_plot(ax2,l,f,i,lambda_start,lambda_end)
+        elif i <= 14 :
+            h,l,f = readfile(files[i])
+            oscillator_plot(ax3,l,f,i,lambda_start,lambda_end)
+        elif i <= len(files)-1:
+            h,l,f = readfile(files[i])
+            oscillator_plot(ax4,l,f,i,lambda_start,lambda_end)
+
+
+plt.savefig(name + '2.pdf', format = 'PDF')
+
+plt.clf()
 
 """
 # Add the oscillator strength bars
