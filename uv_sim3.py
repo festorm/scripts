@@ -4,6 +4,33 @@ import math
 import sys
 import os
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
+from scipy.interpolate import splrep, sproot, splev
+
+
+def fwhm(x, y, k=10):
+    """
+    Determine full-with-half-maximum of a peaked set of points, x and y.
+
+    Assumes that there is only one peak present in the datasset.  The function
+    uses a spline interpolation of order k.
+    """
+
+    class MultiplePeaks(Exception): pass
+    class NoPeaksFound(Exception): pass
+
+    half_max = np.amax(y)/2.0
+    s = splrep(x, y - half_max)
+    roots = sproot(s)
+
+    if len(roots) > 2:
+        raise MultiplePeaks("The dataset appears to have multiple peaks, and "
+                "thus the FWHM can't be determined.")
+    elif len(roots) < 2:
+        raise NoPeaksFound("No proper peaks were found in the data set; likely "
+                "the dataset is flat (e.g. all zeros).")
+    else:
+        return roots, abs(roots[1] - roots[0])
+
 
 def uvvis(t,l,f):
     ###CONSTANTS####
@@ -44,9 +71,10 @@ def readfile(f):
     return tom,l,f
     
 def plot(x,y,ax,fig,box=[0.85,0.85],i=0,lambda_start=250, lambda_end=750,ymax_old = 1000):
-    
-    print (files[i].split('_',2)[1])
-    lab = input('Enter legend: ') or files[i].split('_',2)[1]
+    #legend_list = ['SubPc', 'SubPc(TP)','SubPc(TP)$_2$','SubPc(TP)$_3$'] 
+    print (files[i].split('_',3)[1])
+    #lab = legend_list[i]
+    lab = input('Enter legend: ') or files[i].split('_',3)[1].rsplit('.',1)[0]
     ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
     #write the maximum absorption
     for n in range(len(y)):
@@ -57,8 +85,10 @@ def plot(x,y,ax,fig,box=[0.85,0.85],i=0,lambda_start=250, lambda_end=750,ymax_ol
             break        
     ax.plot(x,y,color = tableau20[i],lw=1.5, label = lab +' '+ txt)
     #plt.legend()
-    
-    fig.text(box[0],box[1]-(float(i%5)/30.0),lab + r'$\lambda_{max} $ ' + txt, fontsize=10, color = tableau20[i])
+    #if i ==6:
+    #    fig.text(box[0],box[1]-(float(3)/28.0),lab + r' $\lambda_{max} $ ' + txt, fontsize=10, color = tableau20[i])
+    #else :
+    fig.text(box[0],box[1]-(float(i%6)/28.0),lab + r' $\lambda_{max} $ ' + txt,fontsize=10, color = tableau20[i])
     ymax = max(y)+2000
     print (ymax_old, ymax)
     if ymax < ymax_old:
@@ -72,9 +102,9 @@ def plot(x,y,ax,fig,box=[0.85,0.85],i=0,lambda_start=250, lambda_end=750,ymax_ol
     #ax.get_xaxis().set_tick_params(direction='out', width=1)
     #ax.get_yaxis().set_tick_params(direction='out', width=1)
     
-    majorLocator = MultipleLocator(50)
+    majorLocator = MultipleLocator(100)
     majorFormatter = FormatStrFormatter('%d')
-    minorLocator = MultipleLocator(25)
+    minorLocator = MultipleLocator(50)
         
     ax.xaxis.set_major_locator(majorLocator)
     ax.xaxis.set_major_formatter(majorFormatter)
@@ -110,13 +140,12 @@ files.sort()
 print (files)
 
 # These are the "Tableau 20" colors as RGB.
-tableau20 = [(255, 0, 224), (219, 219, 141), (127, 127, 127), (158, 218, 229), 
-             (88, 0, 99), (88, 0, 255), (210, 70, 43),    
-             (76, 143, 0), (152, 223, 138), (214, 39, 40), (255, 152, 150),    
+tableau20 = [(200,135,202), (146,210,200), (246,100,100), (255,176,102),
+             (76, 143, 0), (70, 170, 255), (214, 39, 40), (255, 152, 150),    
              (148, 103, 189), (197, 176, 213), (140, 86, 75), (196, 156, 148),    
-             (227, 119, 194), (247, 182, 210), (199, 199, 199),    
-             (188, 189, 34),  (23, 190, 207), (158, 200, 229)] 
-    
+             (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),    
+             (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229)] 
+ 
 # Scale the RGB values to the [0, 1] range, which is the format matplotlib accepts.    
 for i in range(len(tableau20)):    
     r, g, b = tableau20[i]    
@@ -127,8 +156,8 @@ for i in range(len(tableau20)):
 
 #number of points on x-axis
 N=500
-lambda_start = 250
-lambda_end = 600
+lambda_start = 200
+lambda_end = 650
 t=np.linspace(lambda_start, lambda_end, N, endpoint=True)
 #y-axis parameters
 
@@ -138,44 +167,51 @@ ymax_old = 1000
 #fig,(ax1,ax2) = plt.subplots(2,sharey=True, sharex = True)
 
 
-
+sigma_list = []
 for i in range(len(files)):
-    if len(files) <= 5:
+    if len(files) <= 7:
         if i%11==0:
             fig,ax1 = plt.subplots()
         #ax = plt.subplot(111)
         h,l,f = readfile(files[i])
         uv = uvvis(t,l,f)
-        ymax_old = plot(t,uv,ax1,fig,box=[0.5,0.85],i=i,lambda_start=lambda_start, lambda_end=lambda_end,ymax_old=ymax_old)
+        #roots, value = fwhm(t[160:],uv[160:])
+        ymax_old = plot(t,uv,ax1,fig,box=[0.7,0.85],i=i,lambda_start=lambda_start, lambda_end=lambda_end,ymax_old=ymax_old)
+        #for n in range(len(uv)):
+        #    if uv[n+1]-uv[n] <=0.00000001:
+        #        print ('possible t',n)
+        #maxint = np.amax(uv[160:])
+        #end_value = (maxint/ymax_old)*0.5
+        #sigma_list.append(value)
+        #ax1.axvspan(roots[0],roots[1],end_value-0.005,end_value,facecolor=tableau20[i],alpha=0.5)        
         
-        
-    elif len(files) <= 10 :
+    elif len(files) <= 11 :
         if i <= 2:
-            if (i)%11==0:
-                fig,(ax1,ax2) = plt.subplots(2,sharey=True, sharex = True)
+            if (i)%20==0:
+                fig,(ax1,ax2) = plt.subplots(1,2,figsize=(10,4),sharey=True, sharex = True)
             h,l,f = readfile(files[i])
             uv = uvvis(t,l,f)
             #ax =  plt.subplot(211)
             print ('plot')
-            ymax_old = plot(t,uv,ax1,fig,i=i,lambda_start=lambda_start,box = [0.7,0.85],lambda_end=lambda_end,ymax_old=ymax_old)
+            ymax_old = plot(t,uv,ax1,fig,i=i,lambda_start=lambda_start,box =[0.4,0.9],lambda_end=lambda_end,ymax_old=ymax_old)
             
         else :
             h,l,f = readfile(files[i])
             uv = uvvis(t,l,f)
             #ax = plt.subplot(212)
             print ('plot')
-            ymax_old = plot(t,uv,ax2,fig,i=i,lambda_start=lambda_start,lambda_end=lambda_end,box = [0.7,0.45],ymax_old=ymax_old)
+            ymax_old = plot(t,uv,ax2,fig,i=i,lambda_start=lambda_start,lambda_end=lambda_end,box = [0.7,0.9],ymax_old=ymax_old)
     
        
     elif len(files) <= 25 :
        
         if i <= 4:  
             if i % 11 ==0:
-                 fig,((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,sharey=True, sharex = True)
+                 fig,((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize=(10,4),sharey=True, sharex = True)
             h,l,f = readfile(files[i])
             uv = uvvis(t,l,f)
             #ax = plt.subplot(221)
-            ymax_old = plot(t,uv,ax1,fig,[0.4,0.85],i,lambda_start,lambda_end,ymax_old)
+            ymax_old = plot(t,uv,ax1,fig,[0.45,0.85],i,lambda_start,lambda_end,ymax_old)
         elif i <= 9 :
             h,l,f = readfile(files[i])
             uv = uvvis(t,l,f)
@@ -185,7 +221,7 @@ for i in range(len(files)):
             h,l,f = readfile(files[i])
             uv = uvvis(t,l,f)
             #ax = plt.subplot(223)
-            ymax_old = plot(t,uv,ax3,fig,[0.4,0.45],i,lambda_start,lambda_end,ymax_old)
+            ymax_old = plot(t,uv,ax3,fig,[0.45,0.45],i,lambda_start,lambda_end,ymax_old)
         elif i <= len(files)-1:
             h,l,f = readfile(files[i])
             uv = uvvis(t,l,f)
@@ -194,23 +230,24 @@ for i in range(len(files)):
 
 
 #Add labels collectively for subplots
-plt.margins(0.2)
-plt.subplots_adjust(bottom=0.15,hspace=0.5)
+#plt.margins(0.1)
+plt.subplots_adjust(left=0.2,bottom=0.15)
 #fig.text(0.5,0.95,title, fontsize=20, ha='center', va='center')
 fig.text(0.5, 0.06, 'Wavelength (nm)', fontsize=15, ha='center', va='center')
-fig.text(0.05, 0.5, r'$\varepsilon$ L mol$^{-1}$ cm$^{-1}$', fontsize=15, ha='center', va='center', rotation='vertical')
+fig.text(0.1, 0.5, r'$\varepsilon$ L mol$^{-1}$ cm$^{-1}$', fontsize=15, ha='center', va='center', rotation='vertical')
 
 
-plt.savefig(name + '.png')
+plt.savefig(name + '.pdf', format='PDF')
 
+print(sigma_list)
 
 for i in range(len(files)):
     if len(files) <= 5:
         h,l,f = readfile(files[i])
         oscillator_plot(ax1,l,f,i,lambda_start,lambda_end)
         
-    elif len(files) <= 10 :
-        if i <= 2:
+    elif len(files) <= 11 :
+        if i <= 6:
             h,l,f = readfile(files[i])
             oscillator_plot(ax1,l,f,i,lambda_start,lambda_end)
         else :

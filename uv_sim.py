@@ -1,9 +1,16 @@
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import math
 import sys
 import os
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
+from matplotlib import rcParams
+
+
+fm = mpl.font_manager
+fm.get_cachedir()
+rcParams['font.family'] = ['arial']
 
 def uvvis(t,l,f):
     ###CONSTANTS####
@@ -48,48 +55,58 @@ def plot(x,y,ax,fig,i=0,lambda_start=250, lambda_end=750,ymax_old = 1000):
     print files[i].split('_uv_data.txt',1)[0]
     lab = raw_input('Enter legend: ') or files[i].split('_uv_data.txt',1)[0]
     plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-    plt.plot(t,uv,color = tableau20[i],lw=1.5)
+    plt.plot(t,y,color = tableau20[i],lw=2)
     #write the maximum absorption
-    for n in range(len(uv)):
-        if uv[-(n+1)] > uv[-(n+2)]:
-            txt = str(int(t[-(n+1)]))
-            print 'adding text'
-            #plt.annotate(txt,(t[-(n+1)]-10,uv[-(n+1)]+400))
+    for n in range(len(y)):
+        if y[-(n+1)] > y[-(n+2)]:
+            txt = str(int(x[-(n+1)]))
+            print 'adding text', txt
+            if i ==3:
+                plt.annotate(txt,(x[-(n+1)]+15,y[-(n+1)]+0.1))
+            elif i ==1:
+                plt.annotate(txt,(x[-(n+1)]-40,y[-(n+1)]+0.1))
+            elif i==2:
+                plt.annotate(txt,(x[-(n+1)]-10,y[-(n+1)]+0.2))
+            else:
+                plt.annotate(txt,(x[-(n+1)]-20,y[-(n+1)]+0.1))
             break        
-    fig.text(0.7,0.85-(float(i)/30.0),lab+r'$\lambda_{max}$ '+txt, fontsize=10, color = tableau20[i])
-    ymax = max(uv)+2000
-
+    #fig.text(0.68,0.85-(float(i)/30.0),lab, fontsize=10, color = tableau20[i])
+    ymax = max(y)
+    #ymax /= 1000
     if ymax < ymax_old:
         ymax = ymax_old
     ymax_old = ymax
     
     plt.xlim([lambda_start,lambda_end])
-    plt.ylim([0,ymax])
+    plt.ylim([0,7])
     #plt.grid(color='black', which='major', axis='y', linestyle='--', alpha = 0.3)
     ax.get_xaxis().set_tick_params(direction='out', width=1)
     ax.get_yaxis().set_tick_params(direction='out', width=1)
     
-    majorLocator = MultipleLocator(50)
+    majorLocator = MultipleLocator(100)
     majorFormatter = FormatStrFormatter('%d')
-    minorLocator = MultipleLocator(25)
-        
+    minorLocator = MultipleLocator(20)
+
     ax.xaxis.set_major_locator(majorLocator)
     ax.xaxis.set_major_formatter(majorFormatter)
     
     ax.xaxis.set_minor_locator(minorLocator)
-
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+    for tick in ax.xaxis.get_major_ticks():
+        tick.label.set_fontsize(18) 
+    for tick in ax.yaxis.get_major_ticks():
+        tick.label.set_fontsize(18) 
+    #ax.spines["top"].set_visible(False)
+    #ax.spines["right"].set_visible(False)
     ax.yaxis.set_ticks_position('left')
     ax.xaxis.set_ticks_position('bottom')
+    ax.yaxis.set_minor_locator(MultipleLocator(0.5))
     return ymax_old
     
     
 
 
-
 #user input for plot
-title = raw_input('Enter plot title: ') or "title"
+title = raw_input('Enter plot title: ') or ""
 name = raw_input('Enter filename: ') or "test"    
 
 #create list of relevant file names
@@ -97,7 +114,7 @@ files = [filename for filename in os.listdir('.') if filename.endswith('.txt')]
 files.sort()
 print files
 # These are the "Tableau 20" colors as RGB.
-tableau20 = [(255, 0, 224), (88, 0, 99), (88, 0, 255), (210, 70, 43),    
+tableau20 = [(255, 0, 224), (128,0,128), (0, 0, 255), (0,0,128),    
              (76, 143, 0), (152, 223, 138), (214, 39, 40), (255, 152, 150),    
              (148, 103, 189), (197, 176, 213), (140, 86, 75), (196, 156, 148),    
              (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),    
@@ -108,30 +125,39 @@ for i in range(len(tableau20)):
     r, g, b = tableau20[i]    
     tableau20[i] = (r / 255., g / 255., b / 255.)
 
-
-
 fig = plt.figure()
+#fig = gcf()
+DPI = fig.get_dpi()
+fig.set_size_inches(1000.0/float(DPI),800.0/float(DPI))
+
+
+
 #number of points on x-axis
 N=500
 lambda_start = 250
-lambda_end = 750
+lambda_end = 800
 t=np.linspace(lambda_start, lambda_end, N, endpoint=True)
 #y-axis parameters
 
-ymax_old = 1000
+ymax_old = 1
 
 print len(files)
 for i in range(len(files)):
-    if len(files) <= 3 :
+    if len(files) <= 4 :
         ax = plt.subplot(111)
         h,l,f = readfile(files[i])
         uv = uvvis(t,l,f)
+        uv /=10000
         ymax_old = plot(t,uv,ax,fig,i,lambda_start,lambda_end,ymax_old)
-        
+        print ymax_old
+        g = open('numbers'+str(i),'w')
+        for i in range(len(uv)):
+            g.write(str(t[i]) + ',' + str(uv[i]) +'\n')
     elif len(files) <= 10 :
         if i <= 2:
             h,l,f = readfile(files[i])
             uv = uvvis(t,l,f)
+            
             ax =  plt.subplot(211)
             ymax_old = plot(t,uv,ax,fig,i,lambda_start,lambda_end)
             
@@ -168,11 +194,11 @@ for i in range(len(files)):
 plt.margins(0.2)
 plt.subplots_adjust(bottom=0.15,hspace=0.5)
 fig.text(0.5,0.95,title, fontsize=20, ha='center', va='center')
-fig.text(0.5, 0.06, 'Wavelength (nm)', fontsize=15, ha='center', va='center')
-fig.text(0.02, 0.5, r'$\varepsilon$ (L/(mol cm))', fontsize=15, ha='center', va='center', rotation='vertical')
+fig.text(0.5, 0.06, 'Wavelength (nm)', fontsize=22, ha='center', va='center')
+fig.text(0.07, 0.5, r'$\varepsilon$ (10$^4$ Mcm$^{-1}$)', fontsize=22, ha='center', va='center', rotation='vertical')
 
 
-plt.savefig(name + '.png')
+plt.savefig(name+'ny' + '.pdf',dpi=1000)
 
 # Add the oscillator strength bars
 ax2 = ax.twinx()
@@ -186,7 +212,7 @@ for i in range(len(files)):
     ax2.bar(l,f,2,color = tableau20[i])
     plt.xlim([lambda_start,lambda_end])
     plt.ylim(0,1)
-plt.savefig(name + '2.png')
+plt.savefig(name + '2.pdf')
 
 """
 plt.clf()
