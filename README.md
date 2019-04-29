@@ -2,8 +2,8 @@ Scripts used during my PhD at University of Copenhagen:
 
 Basic Analysis
 
-uv_sim.py - replots the uv-vis spectra based on oscillator strengths and transition energiers from a quantum chemical problem
-EDD.py - creates the executable for Gaussian software to make the electron density difference plots
+* uv_sim.py - replots the uv-vis spectra based on oscillator strengths and transition energiers from a quantum chemical problem
+* EDD.py - creates the executable for Gaussian software to make the electron density difference plots
 Machine Learning
 
 Creation of feature vectors
