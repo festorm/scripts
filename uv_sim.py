@@ -1,19 +1,187 @@
+#!/usr/bin/env python
+
+#Freja Eilsø Storm
+#Inspiration from Mia Harring Hansen
+
 import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
+import copy
 import math
-import sys
-import os
-from matplotlib.ticker import MultipleLocator, FormatStrFormatter
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator, FormatStrFormatter,MaxNLocator
 from matplotlib import rcParams
+from subprocess import Popen, PIPE
+plt.rcParams.update(plt.rcParamsDefault)
+
+def shell(cmd, shell=False):
+    """ 
+    runs the shell command cmd
+    """
+    if shell:
+        p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    
+    else:
+        cmd = cmd.split()
+        p = subprocess.Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+
+    output, err = p.communicate()
+    
+    return output.decode('utf-8')
+
+def align_yaxis(ax1, ax2):
+    """Align zeros of the two axes, zooming them out by same ratio"""
+    axes = (ax1, ax2)
+    extrema = [ax.get_ylim() for ax in axes]
+    tops = [extr[1] / (extr[1] - extr[0]) for extr in extrema]
+    # Ensure that plots (intervals) are ordered bottom to top:
+    if tops[0] > tops[1]:
+        axes, extrema, tops = [list(reversed(l)) for l in (axes, extrema, tops)]
+
+    # How much would the plot overflow if we kept current zoom levels?
+    tot_span = tops[1] + 1 - tops[0]
+
+    b_new_t = extrema[0][0] + tot_span * (extrema[0][1] - extrema[0][0])
+    t_new_b = extrema[1][1] - tot_span * (extrema[1][1] - extrema[1][0])
+    axes[0].set_ylim(extrema[0][0], b_new_t)
+    axes[1].set_ylim(t_new_b, extrema[1][1])
 
 
-fm = mpl.font_manager
-fm.get_cachedir()
-font = 'arial'
-rcParams['font.family'] = [font]
+def readfile(f):
+    """
+    read the data-file is it was exported before hand
+    """
+
+    x = []
+    y = []
+    with open(f, 'r') as my_file:
+        for l in my_file:
+            row = l.split(',')
+            
+            x.append(float(row[0]))
+            y.append(float(row[1]))
+    return x,y
+
+def oscillator_plot(ax,l,f,i,lambda_start, lambda_end,colorlist,lab):
+    """
+    plots the stick spectrum of the oscillator strengths
+    """
+    if colorlist != []:
+        tableau20 = colors(colorlist)
+    else:
+        tableau20 = colors() 
+   
+    ax2 = ax.twinx()
+    align_yaxis(ax,ax2)
+    ax2.set_ylim([0,1.1])
+    ax2.grid(None)
+    if i == 0:
+    #setup
+        ax2.set_xlim([lambda_start,lambda_end])
+        ax2.yaxis.set_tick_params(which='major', labelsize=14, direction='out')
+    else:
+        ax2.set_yticklabels([])
+
+    if 'VAC' in lab:
+        ax2.bar(l,f,2,color = tableau20[i],hatch='-')
+    else:
+        ax2.bar(l,f,2,color = tableau20[i])
+    
+    
+
+
+def plot_setup(ax):
+    """
+    set up the "nice" uv-vis layout
+    """
+    ax.tick_params(axis = 'both', which = 'major', length = 8)
+    ax.tick_params(axis = 'both', which = 'minor', length = 4)
+
+    ax.get_xaxis().set_tick_params(direction='out', width=1)
+    ax.get_yaxis().set_tick_params(direction='out', width=1)
+
+    majorLocator = MultipleLocator(100)
+    majorFormatter = FormatStrFormatter('%d')
+    minorLocator = MultipleLocator(20)
+    
+    ax.xaxis.set_major_locator(majorLocator)
+    ax.xaxis.set_major_formatter(majorFormatter)
+    ax.xaxis.set_minor_locator(minorLocator)
+
+    
+    ax.yaxis.set_major_locator(MultipleLocator(2.5))
+    #ax.yaxis.set_major_locator(MultipleLocator(0.2))
+    #ax.yaxis.set_major_formatter(majorFormatter)
+    ax.yaxis.set_minor_locator(MultipleLocator(0.5))
+
+#    fm = mpl.font_manager
+#    fm.get_cachedir()
+#    font = 'arial'
+#    rcParams['font.family'] = [font]
+    ax.legend(loc="upper right",fontsize=28)
+    legend = ax.legend(frameon = 1)
+    frame = legend.get_frame()
+    frame.set_color('white')
+    for tick in ax.xaxis.get_major_ticks():
+        tick.label.set_fontsize(14) 
+    for tick in ax.yaxis.get_major_ticks():
+        tick.label.set_fontsize(14) 
+
+def colors(colorlist=[]):
+    if colorlist != []:
+        tableau20 = copy.copy(colorlist)
+        for i in range(len(tableau20)):
+            r, g, b = tableau20[i]
+            tableau20[i] = (r / 255., g / 255., b / 255.)
+    else :
+#	These are the "Tableau 20" colors as RGB.
+        tableau20 = [(255,0,0),(0,0,255), (255,125,0), (128,128,0), (200,200,0),(0, 255, 0), (0,128,128), (0,0,128), (128,0,128),(255,0,255), (43, 0,0), (140, 86, 75), (196, 156, 148),(227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),(188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229)] 
+#	     Scale the RGB values to the [0, 1] range, which is the format matplotlib accepts.    
+        for i in range(len(tableau20)):    
+            r, g, b = tableau20[i]    
+            tableau20[i] = (r / 255., g / 255., b / 255.)
+    return tableau20
+
+def plotter(ax,j,x,y,lab,colorlist, ymax_old=1):
+    """
+    plot the data
+    """
+    if colorlist != []:
+        tableau20 = colors(colorlist)
+    else:
+        tableau20 = colors() 
+
+    ymax = max(y)
+
+    if 'VAC' in lab:
+        ax.plot(x,y,color=tableau20[j],linewidth=2.0,linestyle='--',label=lab,alpha=1.0)
+    else :
+        #ax.plot(x,y/ymax,color=tableau20[j],linewidth=2.0,label=lab,alpha=1.0)
+        ax.plot(x,y,color=tableau20[j],linewidth=2.0,label=lab,alpha=1.0)
+    #ax.plot(x,y,color=tableau20[j],linewidth=2.0,label=lab,alpha=1.0)
+    
+    if ymax < ymax_old:
+        ymax = ymax_old
+    ymax_old = ymax
+     
+    ax.set_ylim([0,ymax_old])
+    #ax.set_ylim([0,1.0])
+    ax.set_xlim([min(x),max(x)])
+    return ymax
 
 def uvvis(t,l,f):
+    """
+    adds a gaussian distribution on top of the calculated oscillator strengths
+    t; x-axis range
+    l; list of calculated transition energies
+    f; calculated oscillator strengths
+
+    for each value on the x-axis, the contribution to the absorption from each calculated transition energy is summed up
+    http://gaussian.com/uvvisplot/
+    k = transformation constant
+
+    """
+
+    #l = l[:25]
+    #f = f[:25]
     ###CONSTANTS####
     NA=6.02214199*10**23 #avogadros number
     c=299792458 #speed of light
@@ -21,10 +189,10 @@ def uvvis(t,l,f):
     me=9.10938*10**(-31) #electron mass
     pi=math.pi
     epsvac=8.8541878176*10**(-12)
-    ###
-    sigmaeV=0.4
+    ### 
+    sigmaeV=0.3
     sigmacm=sigmaeV*8065.544
-    ###
+    ### 
 
     k=(NA*e**2)/(np.log(10)*2*me*c**2*epsvac)*np.sqrt(np.log(2)/pi)*10**(-1)
 
@@ -34,237 +202,195 @@ def uvvis(t,l,f):
         for i in range(0,len(l)):
             lambda1[i]=(k/sigmacm)*f[i]*np.exp(-4*np.log(2)*((1/t[x]-1/l[i])/(10**(-7)*sigmacm))**2)
         lambda_tot[x]=sum(lambda1)
-    return lambda_tot
+    return np.array(lambda_tot)*10**-4
 
-def readfile(f):
-    tom = []
-    l = []
-    f = []
-    with open(files[i],'r') as my_file:
-        next(my_file)
-        for line in my_file:
-            row=line.split()
-            tom.append(float(row[0]))
-            l.append(float(row[1]))
-            f.append(float(row[2]))
-        #f = f[:25]
-        #l = l[:25]
-    return tom,l,f
-    
-def plot(x,y,ax,fig,i=0,lambda_start=250, lambda_end=750,ymax_old = 1000):
-    
-    print files[i].split('_',5)[3]
-    lab = raw_input('Enter legend: ') or files[i].split('_',5)[3]
-    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-    #write the maximum absorption
-    for n in range(len(y)):
-        if y[-(n+1)] > y[-(n+2)]:
-            txt = str(int(x[-(n+1)]))
-            print 'adding text', txt
-            #if i ==3:
-            #    plt.annotate(txt,(x[-(n+1)]-10,y[-(n+1)]+0.1),size=16)
-            #elif i ==1:
-            #    plt.annotate(txt,(x[-(n+1)]-10,y[-(n+1)]+0.1),size=16)
-            #elif i==2:
-            #    plt.annotate(txt,(x[-(n+1)]-10,y[-(n+1)]+0.7),size=16)
-            #else:
-            #    plt.annotate(txt,(x[-(n+1)]-10,y[-(n+1)]+0.1),size=16)
-            #plt.annotate(txt,(x[-(n+1)]-10,y[-(n+1)]+0.1),size=16,color=tableau20[i])
-            break        
-    #fig.text(0.68,0.85-(float(i)/30.0),lab, fontsize=10, color = tableau20[i])
-    plt.plot(t,y,color = tableau20[i],lw=2,label=lab+txt)
-    ymax = max(y)
-    #ymax /= 1000
-    if ymax < ymax_old:
-        ymax = ymax_old
-    ymax_old = ymax
-    
-    plt.xlim([lambda_start,lambda_end])
-    plt.ylim([0,ymax_old])
-    plt.legend(loc='upper right')
-    #plt.grid(color='black', which='major', axis='y', linestyle='--', alpha = 0.3)
-    ax.tick_params(axis = 'both', which = 'major', length = 8)
-    ax.tick_params(axis = 'both', which = 'minor', length = 5)
-    
-    ax.get_xaxis().set_tick_params(direction='out', width=1)
-    ax.get_yaxis().set_tick_params(direction='out', width=1)
-    ax.axhline(linewidth=2)
-    ax.axvline(linewidth=2)
-    
-    majorLocator = MultipleLocator(100)
-    majorFormatter = FormatStrFormatter('%d')
-    minorLocator = MultipleLocator(20)
+def iteration(N_datafiles, N_subplots):
+    """
+    divides the number of plots as equal as possible among subplots
+    """
 
-    ax.xaxis.set_major_locator(majorLocator)
-    ax.xaxis.set_major_formatter(majorFormatter)
+    it = N_datafiles / N_subplots
+    rest = N_datafiles % N_subplots
+    list_iteration = [int(it) for i in range(N_subplots)]
+    counter = 0
+    for i in range(rest):
+        list_iteration[counter] += 1
+        counter += 1
+    return list_iteration
+
+
+def main():
     
-    ax.xaxis.set_minor_locator(minorLocator)
-    for tick in ax.xaxis.get_major_ticks():
-        tick.label.set_fontsize(18) 
-    for tick in ax.yaxis.get_major_ticks():
-        tick.label.set_fontsize(18) 
-    #ax.spines["top"].set_visible(False)
-    #ax.spines["right"].set_visible(False)
-    ax.yaxis.set_ticks_position('left')
-    ax.xaxis.set_ticks_position('bottom')
-    #ax.yaxis.set_minor_locator(MultipleLocator(0.5))
-    return ymax_old,lab
+    import argparse
+    import sys 
+    import os
+
+    parser = argparse.ArgumentParser()
     
+    parser.add_argument('-s','--no_of_subplots',type=int,help='the desired number of subplots')    
+    parser.add_argument('-o','--output',help='the extention of the outputfilei. DEFAULT .log') 
+    parser.add_argument('-e','--experimental',help='data file with experimental data in csv')
+    parser.add_argument('-ls','--lambda_start',type=int,help='starting value of x axis')
+    parser.add_argument('-le','--lambda_end',type=int,help='ending value of x axis')
+    parser.add_argument('-f','--oscillator',type=bool,help='request plot with oscillator strength stick plot. Call with "true"')
+    parser.add_argument('-pdf','--filename',help='set the name of the .pdf file the plot is saved to')
+    parser.add_argument('-c','--colorlist',nargs='+',help='list of RGB colors eq. -c "254,0,251" "91,228,62" "15,0,62"')
+
+    args = parser.parse_args() 
     
 
+    if args.no_of_subplots:
+        print("# of subplots {}".format(args.no_of_subplots))
+        subplot_no = args.no_of_subplots
+    else :
+        subplot_no = 1
 
-#user input for plot
-title = raw_input('Enter plot title: ') or ""
-name = raw_input('Enter filename: ') or "test"    
-
-#create list of relevant file names
-files = [filename for filename in os.listdir('.') if filename.endswith('.txt')]
-files.sort()
-print files
-# These are the "Tableau 20" colors as RGB.
-tableau20 = [(255, 0, 224), (128,0,128), (0, 0, 255), (0,0,128),    
-             (76, 143, 0), (152, 223, 138), (214, 39, 40), (255, 152, 150),    
-             (148, 103, 189), (197, 176, 213), (140, 86, 75), (196, 156, 148),    
-             (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),    
-             (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229), (158, 200, 229)] 
+    if args.output:
+        ext = args.output
+    else :
+        ext = ".log"
     
-# Scale the RGB values to the [0, 1] range, which is the format matplotlib accepts.    
-for i in range(len(tableau20)):    
-    r, g, b = tableau20[i]    
-    tableau20[i] = (r / 255., g / 255., b / 255.)
+    if args.experimental:
+        experimental=True
+        experimental_data = args.experimental
+    else:
+        experimental=False
+    if args.lambda_start:
+        lambda_start = args.lambda_start
+    else:
+        lambda_start = 200
+    
+    if args.lambda_end:
+        lambda_end = args.lambda_end
+    else:
+        lambda_end = 850
 
-fig = plt.figure()
-#fig = gcf()
-DPI = fig.get_dpi()
-fig.set_size_inches(1000.0/float(DPI),800.0/float(DPI))
+    if args.oscillator:
+        osc_plot = True
+    else :
+        osc_plot = False
 
+    if args.filename:
+        filename=args.filename
+    else :
+        filename='test'
+    filename += '.pdf'
 
-
-#number of points on x-axis
-N=500
-lambda_start=250
-lambda_end =700 
-t=np.linspace(lambda_start, lambda_end, N, endpoint=True)
-#y-axis parameters
-
-ymax_old = 1
-
-print len(files)
-for i in range(len(files)):
-    if len(files) <= 6 :
-        ax = plt.subplot(111)
-        h,l,f = readfile(files[i])
-        uv = uvvis(t,l,f)
-        uv /=10000
-        ymax_old,lab = plot(t,uv,ax,fig,i,lambda_start,lambda_end,ymax_old)
-        print ymax_old
-        g = open(lab+'.csv','w')
-        for i in range(len(uv)):
-            g.write(str(t[i]) + ',' + str(uv[i]) +'\n')
-    elif len(files) <= 14 :
-        if i <= 6:
-            h,l,f = readfile(files[i])
-            uv = uvvis(t,l,f)
-            uv /=10000
-            ax =  plt.subplot(211)
-            ymax_old,lab= plot(t,uv,ax,fig,i,lambda_start,lambda_end,ymax_old)
+    if args.colorlist:
+        colorlist = args.colorlist
+        colorlist = [sublist.split(',') for sublist in colorlist]
+        for i in range(len(colorlist)):
+            for j in range(len(colorlist[i])):
+                colorlist[i][j] = int(colorlist[i][j])
+                
+    else:
+        colorlist = []
+    
+    files = [filename for filename in os.listdir('.') if filename.endswith(ext)]
+    files.sort()
+    print(files)
+    #number of points on x-axis
+    ymax_old = 1. 
+    N=500
+    t=np.linspace(lambda_start, lambda_end, N, endpoint=True)
+     
+    if subplot_no == 4:
+        fig,axarr= plt.subplots(2,2,figsize=(10,8),sharey=True,sharex = True)
+        axarr = [j for i in axarr for j in i]
+    elif subplot_no == 1:
+        fig,axarr= plt.subplots(subplot_no,figsize=(10,8))
+    else :
+        fig,axarr= plt.subplots(subplot_no,figsize=(10,8),sharey=True, sharex = True)
+    
+    
+    counter = 0
+    if subplot_no > 1:
+        for index, it in enumerate(iteration(len(files),subplot_no)):
+            if experimental:
+                l,f = readfile(experimental_data) 
+                plotter(axarr[index],1,l,f,'EXP',colorlist,ymax_old)  
             
-            g = open(lab+'.csv','w')
-            for i in range(len(uv)):
-                g.write(str(t[i]) + ',' + str(uv[i]) +'\n')
-        else :
-            h,l,f = readfile(files[i])
-            uv = uvvis(t,l,f)
-            uv /= 10000
-            ax = plt.subplot(212)
-            ymax_old,lab = plot(t,uv,ax,fig,i,lambda_start,lambda_end,ymax_old)
-            g = open(lab+'.csv','w')
-            for i in range(len(uv)):
-                g.write(str(t[i]) + ',' + str(uv[i]) +'\n')
+            for curve in range(it):
+                normal = shell('grep "Normal termination" '+ files[counter],shell=True)
+                if normal != '':
+                    excitation_data = shell('grep "Excited" '+files[counter], shell=True).split('\n')
+                    excitation_data  = [k for i in excitation_data[1:-1] for k in i.split(' ') if k != '']
+                    
+                    l = excitation_data[6::10]
+                    l = [float(k) for k in l]
+                
+                    f = excitation_data[8::10]
+                    f = [float(k.split('f=')[1]) for k in f]
+                    s = uvvis(t,l,f)
+                
+                else:
+                    continue
+                
+                lab = files[counter].split('.')[0]
+                lab = lab.split('_')[1]
+                ymax_old = plotter(axarr[index],counter,t,s,lab,colorlist,ymax_old)        
+               
+                if osc_plot:
+                    print(curve)
+                    oscillator_plot(axarr[index],l,f,counter,lambda_start,lambda_end,colorlist,lab)
+   
+                with open(files[counter]+'data.csv','w') as f:
+                    for i in range(len(s)):
+                        f.write("{},{} \n".format(t[i],s[i]))
+                counter += 1
+            plot_setup(axarr[index])
+
+    else :
+        for index, it in enumerate(iteration(len(files),subplot_no)):
+            if experimental:
+                l,f = readfile(experimental_data) 
+                plotter(axarr,1,l,f,'EXP',colorlist,ymax_old)  
+            
+            for curve in range(it):
+                normal = shell('grep  "Normal termination" '+ files[counter],shell=True)
+                if normal != '':
+                    excitation_data = shell('grep "Excited" '+files[counter], shell=True).split('\n')
+                    excitation_data  = [k for i in excitation_data[1:-1] for k in i.split(' ') if k != '']
+                    l = excitation_data[6::10]
+                    l = [float(k) for k in l]
+                    f = excitation_data[8::10]
+                    f = [float(k.split('f=')[1]) for k in f]
+                    
+                    #limit number of excited statenks
+                    l = l[:25]
+                    f = f[:25]
+
+                    s = uvvis(t,l,f)
+                else:
+                    continue
+                
+                lab = files[counter].split('_')[0]
+                lab = lab.split('-')[-1]
+                #lab = lab.replace('M',r'$\beta$',1)
+                ymax_old = plotter(axarr,counter,t,s,lab,colorlist,ymax_old)
+                
+                if osc_plot:
+                    oscillator_plot(axarr,l,f,counter,lambda_start,lambda_end,colorlist,lab)
+
+                with open(files[counter]+'data.csv','w') as f:
+                    for i in range(len(s)):
+                        f.write("{},{} \n".format(t[i],s[i]))
+                counter += 1
+            plot_setup(axarr)
+                
+
     
-    elif len(files) <= 25 :
-        if i <= 4:                   
-            h,l,f = readfile(files[i])
-            uv = uvvis(t,l,f)
-            ax = plt.subplot(221)
-            ymax_old,lab= plot(t,uv,ax,fig,i,lambda_start,lambda_end)
-            g = open(lab+'.csv','w')
-            for i in range(len(uv)):
-                g.write(str(t[i]) + ',' + str(uv[i]) +'\n')
-        elif i <= 9 :
-            h,l,f = readfile(files[i])
-            uv = uvvis(t,l,f)
-            ax =  plt.subplot(222)
-            ymax_old,lab = plot(t,uv,ax,fig,i,lambda_start,lambda_end)
-            g = open(lab+'.csv','w')
-            for i in range(len(uv)):
-                g.write(str(t[i]) + ',' + str(uv[i]) +'\n')
-        elif i <= 14 :
-            h,l,f = readfile(files[i])
-            uv = uvvis(t,l,f)
-            ax = plt.subplot(223)
-            ymax_old,lab = plot(t,uv,ax,fig,i,lambda_start,lambda_end)
-            g = open(lab+'.csv','w')
-            for i in range(len(uv)):
-                g.write(str(t[i]) + ',' + str(uv[i]) +'\n')
-        else :
-            h,l,f = readfile(files[i])
-            uv = uvvis(t,l,f)
-            ax = plt.subplot(224)
-            ymax_old,lab = plot(t,uv,ax,fig,i,lambda_start,lambda_end)
-            g = open(lab+'.csv','w')
-            for i in range(len(uv)):
-                g.write(str(t[i]) + ',' + str(uv[i]) +'\n')
 
+    fig.subplots_adjust(hspace=0.1,bottom=0.2)
+    fig.text(0.5, 0.1, r'$\lambda$ (nm)', fontsize=22, ha='center', va='center')
+    fig.text(0.04, 0.5, r'$\epsilon$ (10$^4$ M$^{-1}$ cm$^{-1}$)', fontsize=22, ha='center', va='center', rotation='vertical')
+    #fig.text(0.04, 0.5, r'Normalized Absorption (a.u.)', fontsize=22, ha='center', va='center', rotation='vertical')
+    if osc_plot:
+        fig.text(0.97, 0.5, 'Oscillator Strength', fontsize=22, ha='center', va='center', rotation=270)
+    plt.savefig(filename)
 
-#Add labels collectively for subplots
-plt.margins(0.2)
-plt.subplots_adjust(bottom=0.15,hspace=0.5)
-fig.text(0.5,0.95,title, fontsize=20, ha='center', va='center')
-fig.text(0.5, 0.06, 'Wavelength (nm)', fontsize=22, ha='center', va='center')
-fig.text(0.07, 0.5, r'$\epsilon$ (10$^2$ M$^{-1}$ cm$^{-1}$)', fontsize=22, ha='center', va='center', rotation='vertical')
-
-
-plt.savefig(name+font + '.pdf',dpi=1000)
-
-# Add the oscillator strength bars
-ax2 = ax.twinx()
-ax2.spines["top"].set_visible(False)
-ax2.spines["right"].set_visible(False)
-ax2.spines["bottom"].set_visible(False)
-ax2.spines["left"].set_visible(False)
-for i in range(len(files)):
-    h,l,f = readfile(files[i])
-    uv = uvvis(t,l,f)
-    ax2.bar(l,f,2,color = tableau20[i])
-    plt.xlim([lambda_start,lambda_end])
-    plt.ylim(0,1)
-plt.savefig(name + '2.pdf')
-
-"""
-plt.clf()
-
-ax = plt.subplot(111)
-plt.margins(0.2)
-plt.subplots_adjust(bottom=0.15,hspace=0.5)
-#plt.show()
-fig.text(0.5,0.95,title, fontsize=20, ha='center', va='center')
-fig.text(0.5, 0.06, 'Wavelength (nm)', fontsize=17, ha='center', va='center')
-fig.text(0.02, 0.5, r'$\varepsilon$ (L/(mol cm))', fontsize=17, ha='center',
-        va='center', rotation='vertical')
-
-ax.spines["top"].set_visible(False)
-ax.spines["right"].set_visible(False)
-ax.spines["bottom"].set_visible(False)
-ax.spines["left"].set_visible(False)
-for i in range(len(files)):
-    h,l,f = readfile(files[i])
-    #print len(f)
-    uv = uvvis(t,l,f)
-    lab = files[i].split('_uv_data.txt',1)[0]
-    fig.text(0.7,0.85-(float(i)/30.0),lab,fontsize=10,color = tableau20[i])
-    ax.bar(l,f,0.3,color = tableau20[i])
-    plt.xlim([lambda_start,lambda_end])
-    plt.ylim(0,1)
-plt.savefig(name + 'osc.png')
-"""
+if __name__=="__main__":
+    plt.style.use('seaborn')
+    #plt.grid(False)
+    plt.tight_layout()
+    main()
